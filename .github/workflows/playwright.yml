@@ -7,51 +7,81 @@ on:
     branches: [ main, master ]
 
 jobs:
-  test:
+
+  # ============================================
+  #  PARALLEL TESTS JOB
+  # ============================================
+  parallel-tests:
     timeout-minutes: 60
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        shard: [1/3, 2/3, 3/3]  # <-- 3 parallel runners
+
     steps:
-      # Checkout the code
       - uses: actions/checkout@v4
 
-      # Set up Node.js environment (LTS version)
       - uses: actions/setup-node@v4
         with:
           node-version: 'lts/*'
 
-      # Install dependencies from package-lock.json (or npm ci)
       - name: Install dependencies
         run: npm ci
 
-      # Install Playwright Browsers with dependencies
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
-      # Install OpenJDK for Allure (needed for Allure report generation)
       - name: Install Java (OpenJDK 11)
         run: sudo apt-get install openjdk-11-jdk -y
 
-      # Set JAVA_HOME environment variable
       - name: Set JAVA_HOME
         run: echo "JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64" >> $GITHUB_ENV
 
-      # Verify Java installation
-      - name: Verify Java installation
-        run: java -version
+      - name: Run PARALLEL Playwright tests
+        run: npx playwright test tests/parallel --shard=${{ matrix.shard }} --reporter=allure-playwright
 
-      # Run Playwright tests with Allure reporter
-      - name: Run Playwright tests
-        run: npx playwright test --reporter=allure-playwright
-
-      # Generate the Allure report using the installed Allure CLI (from dependencies)
-      - name: Generate Allure report
-        run: npx allure-commandline generate allure-results --clean -o allure-report
-
-      # Upload Allure report as an artifact
-      - name: Upload Allure report
+      # Save allure-results FROM EACH SHARD separately
+      - name: Upload shard allure results
         uses: actions/upload-artifact@v4
         with:
-          name: allure-report
-          path: allure-report
-          retention-days: 30
+          name: allure-results-parallel-${{ matrix.shard }}
+          path: allure-results
+
+
+  # ============================================
+  #  SERIAL TESTS JOB
+  # ============================================
+  serial-tests:
+    needs: parallel-tests   # <-- wait for parallel tests to finish
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Install Java (OpenJDK 11)
+        run: sudo apt-get install openjdk-11-jdk -y
+
+      - name: Set JAVA_HOME
+        run: echo "JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64" >> $GITHUB_ENV
+
+      # SERIAL tests must NOT run in parallel
+      - name: Run SERIAL Playwright tests
+        run: npx playwright test tests/serial --workers=1 --reporter=allure-playwright
+
+      - name: Upload serial allure results
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-serial
+          path: allure-results
