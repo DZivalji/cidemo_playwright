@@ -10,6 +10,7 @@ jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+
     steps:
       # Checkout the code
       - uses: actions/checkout@v4
@@ -27,13 +28,21 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
+      # Install OpenJDK for Allure (needed for Allure report generation)
+      - name: Install Java (OpenJDK 11)
+        run: sudo apt-get install openjdk-11-jdk -y
+
+      # Set JAVA_HOME environment variable
+      - name: Set JAVA_HOME
+        run: echo "JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64" >> $GITHUB_ENV
+
       # Run Playwright tests with Allure reporter
       - name: Run Playwright tests
         run: npx playwright test --reporter=allure-playwright
 
-      # Generate the Allure report
+      # Generate the Allure report using the installed Allure CLI
       - name: Generate Allure report
-        run: allure generate allure-results --clean -o allure-report
+        run: npx allure generate allure-results --clean -o allure-report
 
       # Upload Allure report as an artifact
       - name: Upload Allure report
