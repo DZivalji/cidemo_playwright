@@ -36,13 +36,17 @@ jobs:
       - name: Set JAVA_HOME
         run: echo "JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64" >> $GITHUB_ENV
 
+      # Verify Java installation
+      - name: Verify Java installation
+        run: java -version
+
       # Run Playwright tests with Allure reporter
       - name: Run Playwright tests
         run: npx playwright test --reporter=allure-playwright
 
-      # Generate the Allure report using the installed Allure CLI
+      # Generate the Allure report using the installed Allure CLI (from dependencies)
       - name: Generate Allure report
-        run: npx allure generate allure-results --clean -o allure-report
+        run: npx allure-commandline generate allure-results --clean -o allure-report
 
       # Upload Allure report as an artifact
       - name: Upload Allure report
