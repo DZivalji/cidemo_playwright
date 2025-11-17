@@ -48,7 +48,6 @@ jobs:
           name: allure-results-parallel-${{ matrix.shard }}
           path: allure-results
 
-
   # ============================================
   #  SERIAL TESTS JOB
   # ============================================
